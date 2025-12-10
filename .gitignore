@@ -1,0 +1,8 @@
+# Docker data directory
+docker-data/
+
+# Environment variables (if they contain sensitive data)
+# .env
+
+# Logs
+*.log
