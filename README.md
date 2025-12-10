@@ -1,175 +1,104 @@
-# Servidor de Correo Docker - gerard.test
+# BillionMail - Servidor de Correo en Red Local
 
-Servidor de correo completo usando Docker con soporte para SMTP e IMAP para el dominio `gerard.test`.
+Servidor de correo completo para despliegue en red local (LAN) usando Docker. 
+Diseñado para ser accedido fácilmente desde cualquier dispositivo en la misma red mediante IP, manteniendo el dominio interno `gerard.test`.
 
 ## 📋 Requisitos Previos
 
-- Docker Desktop instalado y ejecutándose
-- Docker Compose
-- Puertos disponibles: 25, 587, 465, 143, 993
+- **Docker** y **Docker Compose** instalados
+- **Puertos disponibles**: 25, 80, 110, 143, 443, 465, 587, 993, 995
+- **IP Local Fija recomendada** en la máquina servidor
 
-## 🚀 Instalación
+## 🚀 Pasos de Despliegue
 
-### 1. Iniciar el servidor
+### 1. Configuración Inicial
+
+Copia la plantilla de configuración:
+
+```powershell
+# Windows
+Copy-Item env_init .env
+```
+```bash
+# Linux/macOS
+cp env_init .env
+```
+
+El archivo `.env` ya viene preconfigurado con:
+- **Red Interna Segura**: `172.22.1.0/24` (para evitar conflictos)
+- **Dominio de Correo**: `mail.gerard.test` (usado internamente por el sistema de correo)
+
+### 2. Levantar el Servidor
 
 ```powershell
 docker-compose up -d
 ```
 
-### 2. Verificar que el contenedor está ejecutándose
+Espera unos minutos a que todos los servicios (Base de datos, Antispam, ClamAV, etc.) inicien correctamente.
+
+## 🌐 Acceso desde la Red Local
+
+A diferencia de un despliegue público, aquí accederemos usando la **IP Local** del ordenador donde está corriendo Docker.
+
+### 1. Descubrir tu IP Local del Servidor
+
+En la máquina donde corre Docker:
+- **Windows**: `ipconfig` -> Busca "Dirección IPv4" (ej: `192.168.1.50`)
+- **Linux/Mac**: `ip addr` o `ifconfig`
+
+### 2. Acceder al Panel de Administración
+
+Desde cualquier PC/Móvil en la misma red WiFi/Cable:
+```
+http://<TU_IP_LOCAL>/billion
+```
+*Ejemplo: http://192.168.1.50/billion*
+
+Usuario: `admin`
+Contraseña: `pirineus`
+
+### 3. Acceder al Webmail (Roundcube)
+
+```
+http://<TU_IP_LOCAL>/roundcube
+```
+*Ejemplo: http://192.168.1.50/roundcube*
+
+## 📧 Configuración de Clientes (Outlook, Thunderbird, Móvil)
+
+Para conectar tu gestor de correo sin configurar DNS ni archivo hosts.
+
+### Datos de la Cuenta
+- **Email**: `usuario@gerard.test` (El dominio es cosmético pero necesario)
+- **Contraseña**: La que hayas creado en el panel.
+
+### Servidor Entrante (IMAP)
+- **Servidor**: `<TU_IP_LOCAL>` (ej: `192.168.1.50`)
+- **Puerto**: `143` (STARTTLS/Sin seguridad) o `993` (SSL/TLS - *Acepta el certificado inseguro*)
+
+### Servidor Saliente (SMTP)
+- **Servidor**: `<TU_IP_LOCAL>` (ej: `192.168.1.50`)
+- **Puerto**: `587` (STARTTLS) o `465` (SSL/TLS)
+- **Autenticación**: Sí, misma que entrada.
+
+> [!NOTE]
+> Al usar IPs y certificados autofirmados, tus clientes de correo mostrarán avisos de seguridad. Debes **aceptar/confiar** en el certificado para continuar.
+
+## 🛠️ Comandos de Mantenimiento
 
 ```powershell
+# Ver estado
 docker-compose ps
-```
 
-### 3. Crear una cuenta de correo
+# Ver logs en tiempo real
+docker-compose logs -f
 
-Para crear un usuario de correo (por ejemplo: `usuario@gerard.test`):
-
-```powershell
-docker exec -it mailserver setup email add usuario@gerard.test
-```
-
-Se te pedirá que ingreses una contraseña para el usuario.
-
-### 4. Listar cuentas de correo
-
-```powershell
-docker exec -it mailserver setup email list
-```
-
-## 📧 Configuración del Cliente de Correo
-
-### Configuración IMAP (Recibir correos)
-- **Servidor**: localhost o mail.gerard.test
-- **Puerto**: 993 (SSL) o 143 (sin SSL)
-- **Usuario**: tu-usuario@gerard.test
-- **Contraseña**: la que configuraste
-
-### Configuración SMTP (Enviar correos)
-- **Servidor**: localhost o mail.gerard.test
-- **Puerto**: 587 (STARTTLS) o 465 (SSL) o 25
-- **Usuario**: tu-usuario@gerard.test
-- **Contraseña**: la que configuraste
-- **Autenticación**: Requerida
-
-## 🧪 Pruebas
-
-### Probar conexión SMTP con telnet
-
-```powershell
-telnet localhost 25
-```
-
-Luego escribe:
-```
-EHLO gerard.test
-QUIT
-```
-
-### Enviar correo de prueba
-
-Puedes usar cualquier cliente de correo (Thunderbird, Outlook, etc.) con la configuración anterior.
-
-## 📝 Comandos Útiles
-
-### Ver logs del servidor
-```powershell
-docker-compose logs -f mailserver
-```
-
-### Detener el servidor
-```powershell
+# Parar el servidor
 docker-compose down
 ```
 
-### Reiniciar el servidor
-```powershell
-docker-compose restart
-```
-
-### Eliminar una cuenta de correo
-```powershell
-docker exec -it mailserver setup email del usuario@gerard.test
-```
-
-### Crear un alias de correo
-```powershell
-docker exec -it mailserver setup alias add alias@gerard.test usuario@gerard.test
-```
-
-### Acceder al contenedor
-```powershell
-docker exec -it mailserver bash
-```
-
-## 🔧 Configuración Avanzada
-
-### Habilitar Anti-spam y Antivirus
-
-Edita el archivo `.env` y cambia:
-```
-ENABLE_SPAMASSASSIN=1
-ENABLE_CLAMAV=1
-```
-
-Luego reinicia:
-```powershell
-docker-compose down
-docker-compose up -d
-```
-
-**Nota**: Esto aumentará el uso de recursos (RAM y CPU).
-
-### Configurar DNS Local (Opcional)
-
-Para que `mail.gerard.test` resuelva localmente, añade a tu archivo hosts:
-
-**Windows**: `C:\Windows\System32\drivers\etc\hosts`
-```
-127.0.0.1 mail.gerard.test gerard.test
-```
-
-## 🐛 Solución de Problemas
-
-### El contenedor no inicia
-- Verifica que los puertos no estén en uso: `netstat -ano | findstr ":25 :587 :993"`
-- Revisa los logs: `docker-compose logs mailserver`
-
-### No puedo conectarme al servidor
-- Verifica que el firewall de Windows permita las conexiones
-- Asegúrate de que el contenedor está ejecutándose: `docker-compose ps`
-
-### Olvidé la contraseña de un usuario
-Elimina el usuario y créalo nuevamente:
-```powershell
-docker exec -it mailserver setup email del usuario@gerard.test
-docker exec -it mailserver setup email add usuario@gerard.test
-```
-
-## 📂 Estructura de Archivos
-
-```
-mailserver/
-├── docker-compose.yml          # Configuración de Docker
-├── .env                        # Variables de entorno
-├── README.md                   # Este archivo
-└── docker-data/               # Datos persistentes (se crea automáticamente)
-    └── dms/
-        ├── mail-data/         # Buzones de correo
-        ├── mail-state/        # Estado del servidor
-        ├── mail-logs/         # Logs
-        └── config/            # Configuración
-```
-
-## 🔒 Seguridad
-
-- Este servidor usa certificados SSL auto-firmados por defecto
-- Para producción, configura certificados válidos (Let's Encrypt)
-- El dominio `.test` es solo para desarrollo/pruebas locales
-- No expongas este servidor directamente a Internet sin configuración adicional de seguridad
-
-## 📚 Recursos
-
-- [Documentación docker-mailserver](https://docker-mailserver.github.io/docker-mailserver/latest/)
-- [Configuración avanzada](https://docker-mailserver.github.io/docker-mailserver/latest/config/advanced/)
+## ⚠️ Nota sobre el Dominio
+Aunque accedas por IP (`192.168.x.x`), el servidor necesita un nombre de dominio interno para gestionar los correos (el `@gerard.test`). 
+- No necesitas comprar este dominio.
+- No necesitas configurar DNS si sigues esta guía de acceso por IP.
+- Los correos solo funcionarán **dentro de tu red local** o entre usuarios de este servidor.
